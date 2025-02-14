@@ -1,75 +1,181 @@
-<header>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        input, button {
+            padding: 10px;
+            margin: 5px 0;
+            font-size: 16px;
+        }
+        button {
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .entry {
+            border-bottom: 1px solid #ccc;
+            padding: 10px 0;
+        }
+        .entry strong {
+            display: block;
+            font-size: 18px;
+        }
+        .summary {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Time Tracker</h1>
+    <input type="text" id="employeeName" placeholder="Enter your name">
+    <button id="startBtn">Start Work</button>
+    <button id="endBtn">End Work</button>
 
-<!--
-  <<< Author notes: Course header >>>
-  Include a 1280×640 image, course title in sentence case, and a concise description in emphasis.
-  In your repository settings: enable template repository, add your 1280×640 social image, auto delete head branches.
-  Add your open source license, GitHub uses MIT license.
--->
+    <h2>Time Entries</h2>
+    <div id="entries"></div>
 
-# GitHub Pages
+    <div class="summary">
+        <h2>Summary</h2>
+        <div id="summary"></div>
+    </div>
 
-_Create a site or blog from your GitHub repositories with GitHub Pages._
+    <!-- Include EmailJS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script>
+        // Initialize EmailJS with your Public Key
+        emailjs.init('mQW66PDmWaObBxgzW'); // Replace with your actual Public Key
+    </script>
 
-</header>
+    <script>
+        const employeeNameInput = document.getElementById('employeeName');
+        const startBtn = document.getElementById('startBtn');
+        const endBtn = document.getElementById('endBtn');
+        const entriesDiv = document.getElementById('entries');
+        const summaryDiv = document.getElementById('summary');
 
-<!--
-  <<< Author notes: Course start >>>
-  Include start button, a note about Actions minutes,
-  and tell the learner why they should take the course.
--->
+        let currentEntry = null;
 
-## Welcome
+        // Load saved entries from local storage
+        let entries = JSON.parse(localStorage.getItem('timeEntries')) || [];
 
-With GitHub Pages, you can host project blogs, documentation, resumes, portfolios, or any other static content you'd like. Your GitHub repository can easily become its own website. In this course, we'll show you how to set up your own site or blog using GitHub Pages.
+        // Display entries
+        function renderEntries() {
+            entriesDiv.innerHTML = entries.map((entry, index) => `
+                <div class="entry">
+                    <strong>${entry.employeeName}</strong>
+                    <div>Start: ${new Date(entry.startTime).toLocaleString()}</div>
+                    <div>End: ${entry.endTime ? new Date(entry.endTime).toLocaleString() : 'In Progress'}</div>
+                    <div>Hours: ${entry.endTime ? calculateHours(entry.startTime, entry.endTime).toFixed(2) : '--'}</div>
+                    <button onclick="deleteEntry(${index})">Delete</button>
+                </div>
+            `).join('');
+            renderSummary();
+        }
 
-- **Who is this for**: Beginners, students, project maintainers, small businesses.
-- **What you'll learn**: How to build a GitHub Pages site.
-- **What you'll build**: We'll build a simple GitHub Pages site with a blog. We'll use [Jekyll](https://jekyllrb.com), a static site generator.
-- **Prerequisites**: If you need to learn about branches, commits, and pull requests, take [Introduction to GitHub](https://github.com/skills/introduction-to-github) first.
-- **How long**: This course takes less than one hour to complete.
+        // Calculate hours worked
+        function calculateHours(startTime, endTime) {
+            const start = new Date(startTime);
+            const end = new Date(endTime);
+            return (end - start) / (1000 * 60 * 60); // Convert milliseconds to hours
+        }
 
-In this course, you will:
+        // Render summary
+        function renderSummary() {
+            const summary = {};
 
-1. Enable GitHub Pages
-2. Configure your site
-3. Customize your home page
-4. Create a blog post
-5. Merge your pull request
+            entries.forEach(entry => {
+                if (!entry.endTime) return; // Skip incomplete entries
+                const hours = calculateHours(entry.startTime, entry.endTime);
+                if (summary[entry.employeeName]) {
+                    summary[entry.employeeName] += hours;
+                } else {
+                    summary[entry.employeeName] = hours;
+                }
+            });
 
-### How to start this course
+            summaryDiv.innerHTML = Object.keys(summary).map(name => `
+                <div><strong>${name}</strong>: ${summary[name].toFixed(2)} hours</div>
+            `).join('');
+        }
 
-<!-- For start course, run in JavaScript:
-'https://github.com/new?' + new URLSearchParams({
-  template_owner: 'skills',
-  template_name: 'github-pages',
-  owner: '@me',
-  name: 'skills-github-pages',
-  description: 'My clone repository',
-  visibility: 'public',
-}).toString()
--->
+        // Send email with time entry details
+        function sendEmail(entry) {
+            const templateParams = {
+                employeeName: entry.employeeName,
+                startTime: new Date(entry.startTime).toLocaleString(),
+                endTime: new Date(entry.endTime).toLocaleString(),
+                hoursWorked: calculateHours(entry.startTime, entry.endTime).toFixed(2)
+            };
 
-[![start-course](https://user-images.githubusercontent.com/1221423/235727646-4a590299-ffe5-480d-8cd5-8194ea184546.svg)](https://github.com/new?template_owner=skills&template_name=github-pages&owner=%40me&name=skills-github-pages&description=My+clone+repository&visibility=public)
+            emailjs.send('service_seniy4t', 'template_zn3u39a', templateParams)
+                .then(() => {
+                    console.log('Email sent successfully!');
+                }, (error) => {
+                    console.error('Failed to send email:', error);
+                });
+        }
 
-1. Right-click **Start course** and open the link in a new tab.
-2. In the new tab, most of the prompts will automatically fill in for you.
-   - For owner, choose your personal account or an organization to host the repository.
-   - We recommend creating a public repository, as private repositories will [use Actions minutes](https://docs.github.com/en/billing/managing-billing-for-github-actions/about-billing-for-github-actions).
-   - Scroll down and click the **Create repository** button at the bottom of the form.
-3. After your new repository is created, wait about 20 seconds, then refresh the page. Follow the step-by-step instructions in the new repository's README.
+        // Start work
+        startBtn.addEventListener('click', () => {
+            const employeeName = employeeNameInput.value.trim();
+            if (!employeeName) return alert('Please enter your name.');
 
-<footer>
+            currentEntry = {
+                employeeName,
+                startTime: new Date().toISOString(),
+                endTime: null
+            };
 
-<!--
-  <<< Author notes: Footer >>>
-  Add a link to get support, GitHub status page, code of conduct, license link.
--->
+            entries.push(currentEntry);
+            localStorage.setItem('timeEntries', JSON.stringify(entries));
+            renderEntries();
+            alert('Work started.');
+        });
 
----
+        // End work
+        endBtn.addEventListener('click', () => {
+            if (!currentEntry) return alert('No active work session.');
 
-Get help: [Post in our discussion board](https://github.com/orgs/skills/discussions/categories/github-pages) &bull; [Review the GitHub status page](https://www.githubstatus.com/)
+            currentEntry.endTime = new Date().toISOString();
+            localStorage.setItem('timeEntries', JSON.stringify(entries));
+            renderEntries();
+            alert('Work ended.');
 
-&copy; 2023 GitHub &bull; [Code of Conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct/code_of_conduct.md) &bull; [MIT License](https://gh.io/mit)
+            // Send email with time entry details
+            sendEmail(currentEntry);
 
-</footer>
+            currentEntry = null;
+        });
+
+        // Delete an entry
+        window.deleteEntry = (index) => {
+            if (confirm('Are you sure you want to delete this entry?')) {
+                entries.splice(index, 1);
+                localStorage.setItem('timeEntries', JSON.stringify(entries));
+                renderEntries();
+            }
+        };
+
+        // Initial render
+        renderEntries();
+    </script>
+</body>
+</html>
